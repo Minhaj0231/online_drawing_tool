@@ -10,8 +10,8 @@ const createElement = (id, x1, y1, x2, y2, type) => {
     case "rectangle":
       const roughElement =
         type === "line"
-          ? generator.line(x1, y1, x2, y2)
-          : generator.rectangle(x1, y1, x2 - x1, y2 - y1);
+          ? generator.line(x1, y1, x2, y2, { roughness: 0 })
+          : generator.rectangle(x1, y1, x2 - x1, y2 - y1, { roughness: 0});
       return { id, x1, y1, x2, y2, type, roughElement };
     case "pencil":
       return { id, type, points: [{ x: x1, y: y1 }] };
@@ -188,6 +188,7 @@ const App = () => {
   const [tool, setTool] = useState("text");
   const [selectedElement, setSelectedElement] = useState(null);
   const textAreaRef = useRef();
+  const [selectedColor, setSelectedColor] = useState('#fff')
 
   useLayoutEffect(() => {
     const canvas = document.getElementById("canvas");
@@ -220,10 +221,8 @@ const App = () => {
   }, [undo, redo]);
 
   useEffect(() => {
-
     const textArea = textAreaRef.current;
     if (action === "writing") {
-      
       textArea.value = selectedElement.text;
     }
   }, [action, selectedElement]);
@@ -339,7 +338,6 @@ const App = () => {
         clientX - selectedElement.offsetX === selectedElement.x1 &&
         clientY - selectedElement.offsetY === selectedElement.y1
       ) {
-        
         setAction("writing");
         return;
       }
@@ -393,13 +391,13 @@ const App = () => {
         <label htmlFor="pencil">Pencil</label>
         <input type="radio" id="text" checked={tool === "text"} onChange={() => setTool("text")} />
         <label htmlFor="text">Text</label>
-        <button style={{margin:5}} onClick={undo}>Undo</button>
-      <button onClick={redo}>Redo</button>
+      
+    
+        <button style={{margin: 5}} onClick={undo}>Undo</button>
+        <button   style={{margin: 5}} onClick={redo}>Redo</button>
       </div>
-     
-      <div style={{ position: "fixed", bottom: 0, padding: 10 }}>
-        
-      </div>
+      
+      
       {action === "writing" ? (
         <textarea
           ref={textAreaRef}
@@ -411,7 +409,6 @@ const App = () => {
             font: "24px sans-serif",
             margin: 0,
             padding: 0,
-            // border: 0,
             outline: 0,
             resize: "auto",
             overflow: "hidden",

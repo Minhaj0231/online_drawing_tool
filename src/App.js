@@ -226,7 +226,7 @@ const App = () => {
       
       textArea.value = selectedElement.text;
     }
-  }, [action, ]);
+  }, [action, selectedElement]);
 
   const updateElement = (id, x1, y1, x2, y2, type, options) => {
     const elementsCopy = [...elements];

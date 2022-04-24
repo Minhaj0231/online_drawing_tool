@@ -1,17 +1,21 @@
 import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
 import rough from "roughjs/bundled/rough.esm";
 import getStroke from "perfect-freehand";
+import { CirclePicker } from 'react-color';
+import Popup from 'reactjs-popup';
+
+import "./popUp.css"
 
 const generator = rough.generator();
 
-const createElement = (id, x1, y1, x2, y2, type) => {
+const createElement = (id, x1, y1, x2, y2, type, color, isfill = "" ) => {
   switch (type) {
     case "line":
     case "rectangle":
       const roughElement =
         type === "line"
-          ? generator.line(x1, y1, x2, y2, { roughness: 0 })
-          : generator.rectangle(x1, y1, x2 - x1, y2 - y1, { roughness: 0});
+          ? generator.line(x1, y1, x2, y2, { roughness: 0, stroke: color })
+          : generator.rectangle(x1, y1, x2 - x1, y2 - y1, { roughness: 0,stroke:  color, fill: isfill?color:"", fillStyle: "solid"});
       return { id, x1, y1, x2, y2, type, roughElement };
     case "pencil":
       return { id, type, points: [{ x: x1, y: y1 }] };
@@ -70,6 +74,8 @@ const getElementAtPosition = (x, y, elements) => {
     .map(element => ({ ...element, position: positionWithinElement(x, y, element) }))
     .find(element => element.position !== null);
 };
+
+
 
 const adjustElementCoordinates = element => {
   const { type, x1, y1, x2, y2 } = element;
@@ -168,6 +174,7 @@ const drawElement = (roughCanvas, context, element) => {
       break;
     case "pencil":
       const stroke = getSvgPathFromStroke(getStroke(element.points));
+
       context.fill(new Path2D(stroke));
       break;
     case "text":
@@ -185,15 +192,20 @@ const adjustmentRequired = type => ["line", "rectangle"].includes(type);
 const App = () => {
   const [elements, setElements, undo, redo] = useHistory([]);
   const [action, setAction] = useState("none");
-  const [tool, setTool] = useState("text");
+  const [tool, setTool] = useState("pencil");
   const [selectedElement, setSelectedElement] = useState(null);
   const textAreaRef = useRef();
-  const [selectedColor, setSelectedColor] = useState('#fff')
+  const [selectedColor, setSelectedColor] = useState('black')
+  const [showColor, setShowColor] = useState(false)
+
+  const [fill, setFill] = useState(false)
+
 
   useLayoutEffect(() => {
     const canvas = document.getElementById("canvas");
     const context = canvas.getContext("2d");
     context.clearRect(0, 0, canvas.width, canvas.height);
+    
 
     const roughCanvas = rough.canvas(canvas);
 
@@ -223,6 +235,7 @@ const App = () => {
   useEffect(() => {
     const textArea = textAreaRef.current;
     if (action === "writing") {
+
       textArea.value = selectedElement.text;
     }
   }, [action, selectedElement]);
@@ -233,10 +246,11 @@ const App = () => {
     switch (type) {
       case "line":
       case "rectangle":
-        elementsCopy[id] = createElement(id, x1, y1, x2, y2, type);
+        elementsCopy[id] = createElement(id, x1, y1, x2, y2, type, selectedColor, fill );
         break;
       case "pencil":
-        elementsCopy[id].points = [...elementsCopy[id].points, { x: x2, y: y2 }];
+        elementsCopy[id].points = [...elementsCopy[id].points, { x: x2, y: y2, selectedColor }];
+
         break;
       case "text":
         const textWidth = document
@@ -245,7 +259,7 @@ const App = () => {
           .measureText(options.text).width;
         const textHeight = 24;
         elementsCopy[id] = {
-          ...createElement(id, x1, y1, x1 + textWidth, y1 + textHeight, type),
+          ...createElement(id, x1, y1, x1 + textWidth, y1 + textHeight, type, selectedColor),
           text: options.text,
         };
         break;
@@ -255,12 +269,28 @@ const App = () => {
 
     setElements(elementsCopy, true);
   };
-
+    
+   const removeElement = ( removed_element) => {
+      let  old_eleemnts = elements
+      let updated_element = old_eleemnts.filter(element => element.id !== removed_element.id)
+      setElements(updated_element)
+   }
   const handleMouseDown = event => {
     if (action === "writing") return;
 
     const { clientX, clientY } = event;
-    if (tool === "selection") {
+
+    if (tool === "remove") {
+      const element = getElementAtPosition(clientX, clientY, elements);
+      if ( element){
+        removeElement(element)
+      }
+
+
+
+    }
+
+    else if (tool === "selection") {
       const element = getElementAtPosition(clientX, clientY, elements);
       if (element) {
         if (element.type === "pencil") {
@@ -282,13 +312,15 @@ const App = () => {
       }
     } else {
       const id = elements.length;
-      const element = createElement(id, clientX, clientY, clientX, clientY, tool);
+      const element = createElement(id, clientX, clientY, clientX, clientY, tool, );
       setElements(prevState => [...prevState, element]);
       setSelectedElement(element);
 
       setAction(tool === "text" ? "writing" : "drawing");
     }
   };
+
+
 
   const handleMouseMove = event => {
     const { clientX, clientY } = event;
@@ -366,6 +398,7 @@ const App = () => {
   return (
     <div>
       <div style={{ position: "fixed" }}>
+
         <input
           type="radio"
           id="selection"
@@ -382,6 +415,25 @@ const App = () => {
           onChange={() => setTool("rectangle")}
         />
         <label htmlFor="rectangle">Rectangle</label>
+
+        { tool === "rectangle" ?
+        <span>
+        <input type="checkbox" id="fill" checked={fill}  onChange={() => setFill(fill?false:true) } />
+        <label htmlFor="text">fill rectangle</label>
+        </span>
+
+        : null}
+
+        {tool === "rectangle" || tool === "line" ?
+          <span>
+            <input type="checkbox" id="color" checked={showColor}  onChange={() => setShowColor(showColor?false:true) } />
+          <label htmlFor="text">color</label>
+          </span>
+
+          : null
+  
+        }
+        
         <input
           type="radio"
           id="pencil"
@@ -392,9 +444,27 @@ const App = () => {
         <input type="radio" id="text" checked={tool === "text"} onChange={() => setTool("text")} />
         <label htmlFor="text">Text</label>
       
-    
+
         <button style={{margin: 5}} onClick={undo}>Undo</button>
         <button   style={{margin: 5}} onClick={redo}>Redo</button>
+
+        <input
+          type="radio"
+          id="remove"
+          checked={tool === "remove"}
+          onChange={() => setTool("remove")}
+        />
+        <label htmlFor="remove">remove</label>
+
+        
+        {showColor && (tool === "rectangle" || tool === "line" ) ?
+
+          <CirclePicker       
+          color={ selectedColor}
+          onChangeComplete={(color) => setSelectedColor(color.hex) }
+          />
+        : null}
+
       </div>
       
       
@@ -427,6 +497,10 @@ const App = () => {
       >
         Canvas
       </canvas>
+
+     
+
+      
     </div>
   );
 };

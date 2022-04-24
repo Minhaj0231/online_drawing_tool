@@ -2,7 +2,8 @@ import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
 import rough from "roughjs/bundled/rough.esm";
 import getStroke from "perfect-freehand";
 import { CirclePicker } from 'react-color';
-import Popup from 'reactjs-popup';
+
+import Modal from "./Components/Modal"
 
 import "./popUp.css"
 
@@ -198,8 +199,15 @@ const App = () => {
   const [selectedColor, setSelectedColor] = useState('black')
   const [showColor, setShowColor] = useState(false)
 
+  const [modalOpen, setModalOpen] = useState(true);
+
   const [fill, setFill] = useState(false)
 
+
+  const show_about = () => {
+  let currentModalOpen = modalOpen
+  setModalOpen(!currentModalOpen)
+}
 
   useLayoutEffect(() => {
     const canvas = document.getElementById("canvas");
@@ -405,7 +413,7 @@ const App = () => {
           checked={tool === "selection"}
           onChange={() => setTool("selection")}
         />
-        <label htmlFor="selection">Selection</label>
+        <label htmlFor="selection">Move</label>
         <input type="radio" id="line" checked={tool === "line"} onChange={() => setTool("line")} />
         <label htmlFor="line">Line</label>
         <input
@@ -454,7 +462,10 @@ const App = () => {
           checked={tool === "remove"}
           onChange={() => setTool("remove")}
         />
-        <label htmlFor="remove">remove</label>
+        <label htmlFor="remove">Remove</label>
+        <button style={{margin: 5}} onClick={show_about}>About</button>
+
+        {modalOpen && <Modal setOpenModal={setModalOpen} />}
 
         
         {showColor && (tool === "rectangle" || tool === "line" ) ?
@@ -499,7 +510,7 @@ const App = () => {
       </canvas>
 
      
-
+     
       
     </div>
   );
